@@ -47,6 +47,8 @@ export interface Client {
   created_by_id: string
   created_at: string
   updated_at: string
+  /** null = ativo; preenchido = soft-deleted. Filtrar IS NULL em todas as queries. */
+  deleted_at: string | null
 }
 
 export interface Lawyer {
@@ -97,6 +99,8 @@ export interface DocumentTemplate {
   created_by_id: string
   created_at: string
   updated_at: string
+  /** null = ativo; preenchido = soft-deleted. Filtrar IS NULL em todas as queries. */
+  deleted_at: string | null
 }
 
 export interface PlaceholderField {
@@ -110,6 +114,15 @@ export interface PlaceholderField {
 export interface Atendimento {
   id: string
   client_id: string
+  /**
+   * FK para processes.id — fonte de verdade quando preenchida.
+   * Quando não nula, process_number exibido vem do join (campo `process`).
+   */
+  process_id: string | null
+  /**
+   * Campo legado — texto livre, usado apenas quando process_id for null.
+   * Nunca usar como fonte de verdade se process_id estiver preenchido.
+   */
   process_number: string | null
   category_id: string | null
   vara_comarca: string | null
@@ -120,6 +133,8 @@ export interface Atendimento {
   // joins opcionais
   client?: Client
   category?: DocumentCategory
+  /** Disponível quando process_id não é nulo e a query faz join com processes */
+  process?: Pick<Process, 'id' | 'process_number'>
 }
 
 export interface GeneratedDocument {
@@ -138,6 +153,8 @@ export interface GeneratedDocument {
   generated_by_id: string
   created_at: string
   updated_at: string
+  /** null = ativo; preenchido = soft-deleted. Filtrar IS NULL em todas as queries. */
+  deleted_at: string | null
   // joins opcionais
   template?: DocumentTemplate
   client?: Client

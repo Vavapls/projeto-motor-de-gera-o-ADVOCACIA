@@ -8,7 +8,12 @@ import { extractPlaceholders, isValidDocx } from '@/lib/utils/docx-parser'
 import { PlaceholderField } from '@/lib/types'
 
 interface TemplateUploadProps {
-  onExtract?: (placeholders: Record<string, PlaceholderField>, previewText: string) => void
+  onExtract?: (
+    placeholders: Record<string, PlaceholderField>,
+    previewText: string,
+    /** Arquivo original — usado pela página pai para upload ao Storage */
+    file: File
+  ) => void
 }
 
 export function TemplateUpload({ onExtract }: TemplateUploadProps) {
@@ -57,7 +62,7 @@ export function TemplateUpload({ onExtract }: TemplateUploadProps) {
       }
 
       setPlaceholders(extracted)
-      onExtract?.(extracted, previewText)
+      onExtract?.(extracted, previewText, file)
     } catch (err: any) {
       console.error('[v0] Error extracting placeholders:', err)
       setError(err.message || 'Erro ao processar arquivo')

@@ -7,9 +7,10 @@ async function getAtendimentos() {
   const { data, error } = await supabase
     .from('atendimentos')
     .select(`
-      id, created_at, process_number, data_emissao, vara_comarca,
+      id, created_at, process_id, process_number, data_emissao, vara_comarca,
       client:clients(full_name, razao_social, tipo_pessoa, cpf_cnpj),
-      category:document_categories(nome)
+      category:document_categories(nome),
+      process:processes(id, process_number)
     `)
     .order('created_at', { ascending: false })
     .limit(50)
@@ -90,7 +91,8 @@ export default async function AtendimentosPage() {
                       {a.category?.nome ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
-                      {a.process_number ?? '—'}
+                      {/* Prioridade: process vinculado > campo texto legado */}
+                      {(a as any).process?.process_number ?? a.process_number ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {formatDate(a.data_emissao)}

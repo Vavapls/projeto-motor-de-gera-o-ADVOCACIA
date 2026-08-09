@@ -7,6 +7,7 @@ export async function getClients(): Promise<Client[]> {
   const { data, error } = await supabase
     .from('clients')
     .select('*')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -20,6 +21,7 @@ export async function getClientById(id: string): Promise<Client | null> {
     .from('clients')
     .select('*')
     .eq('id', id)
+    .is('deleted_at', null)
     .single()
 
   if (error && error.code !== 'PGRST116') throw error
@@ -35,6 +37,7 @@ export async function searchClients(query: string): Promise<Client[]> {
     .or(
       `full_name.ilike.%${query}%,cpf_cnpj.ilike.%${query}%,email.ilike.%${query}%`
     )
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -80,12 +83,13 @@ export async function updateClient(
   return data
 }
 
+/** Soft delete: marca deleted_at = now(). O registro permanece no banco. */
 export async function deleteClient(id: string): Promise<void> {
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('clients')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
 
   if (error) throw error

@@ -7,6 +7,7 @@ export async function getDocuments(): Promise<GeneratedDocument[]> {
   const { data, error } = await supabase
     .from('generated_documents')
     .select('*')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -20,6 +21,7 @@ export async function getDocumentsByClient(clientId: string): Promise<GeneratedD
     .from('generated_documents')
     .select('*')
     .eq('client_id', clientId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -33,6 +35,7 @@ export async function getDocumentsByTemplate(templateId: string): Promise<Genera
     .from('generated_documents')
     .select('*')
     .eq('template_id', templateId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -46,6 +49,7 @@ export async function getDocumentById(id: string): Promise<GeneratedDocument | n
     .from('generated_documents')
     .select('*')
     .eq('id', id)
+    .is('deleted_at', null)
     .single()
 
   if (error && error.code !== 'PGRST116') throw error
@@ -93,12 +97,13 @@ export async function updateDocument(
   return data
 }
 
+/** Soft delete: marca deleted_at = now(). O arquivo no Storage NÃO é removido. */
 export async function deleteDocument(id: string): Promise<void> {
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('generated_documents')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
 
   if (error) throw error
@@ -111,6 +116,7 @@ export async function getNextDocumentNumber(templateId: string): Promise<string>
     .from('generated_documents')
     .select('document_number')
     .eq('template_id', templateId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(1)
 

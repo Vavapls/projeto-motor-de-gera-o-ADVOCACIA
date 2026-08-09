@@ -90,6 +90,12 @@ export interface CreateAtendimentoPayload {
   // Passo 1
   client_id: string
   // Passo 2
+  /**
+   * FK real para processes.id — fonte de verdade para process_number.
+   * Se preenchido, o número exibido vem do processo vinculado (join), não do campo texto.
+   */
+  process_id?: string
+  /** Campo legado: só é usado quando process_id for null. */
   process_number?: string
   category_id?: string
   vara_comarca?: string
@@ -133,12 +139,28 @@ export async function createAtendimentoAction(payload: CreateAtendimentoPayload)
       .limit(1)
       .maybeSingle()
 
+    // Buscar processo vinculado, se houver (para regra de prioridade do número)
+    let linkedProcess: { id: string; process_number: string | null } | null = null
+    if (payload.process_id) {
+      const { data: proc } = await supabase
+        .from('processes')
+        .select('id, process_number')
+        .eq('id', payload.process_id)
+        .maybeSingle()
+      linkedProcess = proc ?? null
+    }
+
+    // Regra de prioridade: process_id preenchido → usa número do processo vinculado.
+    // process_id null → usa o texto livre digitado pelo usuário.
+    const processNumberDisplay = linkedProcess?.process_number ?? payload.process_number ?? ''
+
     // Criar o atendimento
     const { data: atendimento, error: atendErr } = await supabase
       .from('atendimentos')
       .insert({
         client_id: payload.client_id,
-        process_number: payload.process_number || null,
+        process_id: payload.process_id || null,
+        process_number: payload.process_id ? null : (payload.process_number || null),
         category_id: payload.category_id || null,
         vara_comarca: payload.vara_comarca || null,
         data_emissao: payload.data_emissao,
@@ -171,7 +193,7 @@ export async function createAtendimentoAction(payload: CreateAtendimentoPayload)
       'advogado.endereco_escritorio': lawFirm?.address ?? '',
       'documento.data_emissao': payload.data_emissao,
       'documento.local_emissao': payload.local_emissao || lawFirm?.address?.split(',')[2]?.trim() || '',
-      'processo.numero': payload.process_number ?? '',
+      'processo.numero': processNumberDisplay,
       'processo.vara_comarca': payload.vara_comarca ?? '',
     }
 
@@ -222,7 +244,12 @@ export async function getAtendimentosAction(): Promise<{
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('atendimentos')
-      .select('*, client:clients(full_name, razao_social, tipo_pessoa), category:document_categories(nome)')
+      .select(`
+        *,
+        client:clients(full_name, razao_social, tipo_pessoa),
+        category:document_categories(nome),
+        process:processes(id, process_number)
+      `)
       .order('created_at', { ascending: false })
     if (error) return { success: false, error: error.message }
     return { success: true, data: data as any ?? [] }

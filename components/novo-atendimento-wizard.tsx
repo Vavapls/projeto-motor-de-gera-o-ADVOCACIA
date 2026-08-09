@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { getCNJError } from '@/lib/utils/validators'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -53,6 +54,7 @@ export function NovoAtendimentoWizard() {
   const [categories, setCategories] = useState<{ id: string; nome: string }[]>([])
   const [categoryId, setCategoryId] = useState('')
   const [processNumber, setProcessNumber] = useState('')
+  const [processNumberError, setProcessNumberError] = useState<string | null>(null)
   const [varaComarca, setVaraComarca] = useState('')
 
   // Passo 3
@@ -342,9 +344,16 @@ export function NovoAtendimentoWizard() {
               <Label>Número do processo</Label>
               <Input
                 value={processNumber}
-                onChange={(e) => setProcessNumber(e.target.value)}
+                onChange={(e) => {
+                  setProcessNumber(e.target.value)
+                  setProcessNumberError(getCNJError(e.target.value))
+                }}
                 placeholder="0000000-00.0000.0.00.0000 (opcional)"
+                className={processNumberError ? 'border-destructive' : ''}
               />
+              {processNumberError && (
+                <p className="text-sm text-destructive">{processNumberError}</p>
+              )}
             </div>
 
             <div className="space-y-2">

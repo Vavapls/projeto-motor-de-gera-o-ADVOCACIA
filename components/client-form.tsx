@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import type { Client, TipoPessoa, Genero } from '@/lib/types'
 import { createClientAction, updateClientAction } from '@/app/actions/clients'
+import { validateCPF, validateCNPJ } from '@/lib/utils/validators'
 
 const civilStatusOptions = ['solteiro', 'casado', 'divorciado', 'viúvo'] as const
 const generoOptions: { value: Genero; label: string }[] = [
@@ -25,25 +26,47 @@ const generoOptions: { value: Genero; label: string }[] = [
   { value: 'outro', label: 'Outro / Não informar' },
 ]
 
-const clientSchema = z.object({
-  tipo_pessoa: z.enum(['PF', 'PJ']),
-  // PF
-  full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
-  genero: z.enum(['M', 'F', 'outro']).optional(),
-  rg: z.string().optional(),
-  birth_date: z.string().optional(),
-  civil_status: z.enum(['solteiro', 'casado', 'divorciado', 'viúvo']).optional(),
-  nationality: z.string().optional(),
-  profession: z.string().optional(),
-  // PJ
-  razao_social: z.string().optional(),
-  tipo_empresa: z.string().optional(),
-  // Comuns
-  cpf_cnpj: z.string().min(11, 'CPF/CNPJ inválido'),
-  email: z.string().email('Email inválido'),
-  phone: z.string().min(10, 'Telefone inválido'),
-  address: z.string().min(5, 'Endereço deve ter pelo menos 5 caracteres'),
-})
+// Base schema — validação de dígito verificador via superRefine
+// O valor cpf_cnpj chega com ou sem máscara; o validator ignora não-dígitos.
+const clientSchema = z
+  .object({
+    tipo_pessoa: z.enum(['PF', 'PJ']),
+    // PF
+    full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
+    genero: z.enum(['M', 'F', 'outro']).optional(),
+    rg: z.string().optional(),
+    birth_date: z.string().optional(),
+    civil_status: z.enum(['solteiro', 'casado', 'divorciado', 'viúvo']).optional(),
+    nationality: z.string().optional(),
+    profession: z.string().optional(),
+    // PJ
+    razao_social: z.string().optional(),
+    tipo_empresa: z.string().optional(),
+    // Comuns
+    cpf_cnpj: z.string().min(1, 'CPF/CNPJ obrigatório'),
+    email: z.string().email('Email inválido'),
+    phone: z.string().min(10, 'Telefone inválido'),
+    address: z.string().min(5, 'Endereço deve ter pelo menos 5 caracteres'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.tipo_pessoa === 'PF') {
+      if (!validateCPF(data.cpf_cnpj)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'CPF inválido — verifique os dígitos',
+          path: ['cpf_cnpj'],
+        })
+      }
+    } else {
+      if (!validateCNPJ(data.cpf_cnpj)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'CNPJ inválido — verifique os dígitos',
+          path: ['cpf_cnpj'],
+        })
+      }
+    }
+  })
 
 type ClientFormData = z.infer<typeof clientSchema>
 

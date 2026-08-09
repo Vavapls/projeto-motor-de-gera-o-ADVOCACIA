@@ -8,6 +8,7 @@ export async function getTemplates(): Promise<DocumentTemplate[]> {
     .from('document_templates')
     .select('*')
     .eq('is_active', true)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -22,6 +23,7 @@ export async function getTemplatesByCategory(category: string): Promise<Document
     .select('*')
     .eq('category', category)
     .eq('is_active', true)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -35,6 +37,7 @@ export async function getTemplateById(id: string): Promise<DocumentTemplate | nu
     .from('document_templates')
     .select('*')
     .eq('id', id)
+    .is('deleted_at', null)
     .single()
 
   if (error && error.code !== 'PGRST116') throw error
@@ -82,12 +85,13 @@ export async function updateTemplate(
   return data
 }
 
+/** Soft delete: marca deleted_at = now(). O arquivo no Storage NÃO é removido. */
 export async function deleteTemplate(id: string): Promise<void> {
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('document_templates')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
 
   if (error) throw error
@@ -103,6 +107,7 @@ export async function searchTemplates(query: string): Promise<DocumentTemplate[]
       `name.ilike.%${query}%,description.ilike.%${query}%,tags.cs.{"${query}"}`
     )
     .eq('is_active', true)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) throw error
